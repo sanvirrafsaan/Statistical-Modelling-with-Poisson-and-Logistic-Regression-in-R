@@ -1,0 +1,200 @@
+---
+title: "STAC51_A3"
+author: "Rafsaan Sanvir"
+date: "2024-04-02"
+output: word_document
+---
+1a)
+```{r}
+data1 = data.frame(
+  X = c(5, 3, 4, 5, 4, 6, 5, 3, 6, 5),
+  Y = c(53, 34, 45, 49, 45, 77, 62, 37, 75, 54)
+)
+
+model1 = glm(formula = Y~X, data = data1, family = poisson(link = log))
+summary(model1)
+```
+estimate of model in written sheet 
+
+1b)
+```{r}
+full_model = model1 
+reduced_model = glm(formula = Y~1, data = data1, family = poisson(link = log))
+lr_test = anova(reduced_model, full_model, test = "Chisq")
+print(lr_test)
+```
+Since p value extremely small, less than alpha = 0.05, reject null hypothesis. 
+Meaning explanatory variable X has significant effect on response variable Y. 
+
+1c) 
+```{r}
+saturated_MLE = prod(dpois(data1$Y, lambda = data1$Y))
+#note: mean for saturated model is yi/ni, but ni=1 so mean just yi,  
+cat("saturated MLE estimate is:" , saturated_MLE, "\n")
+```
+
+1d) 
+```{r}
+alpha = coefficients(model1)[1]
+beta = coefficients(model1)[2]
+mean_xi = exp(alpha + beta * data1$X)
+full_model_MLE = prod(dpois(data1$Y, lambda = mean_xi))
+cat("full model MLE estimate is:" , full_model_MLE, "\n")
+```
+1e) 
+```{r}
+mean_xi2 = exp(alpha)
+reduced_model_MLE = prod(dpois(data1$Y, lambda = mean_xi2)) 
+print(reduced_model_MLE)
+cat("reduced model MLE estimate is:" , reduced_model_MLE, "\n")
+```
+1f) (not complete)
+```{r}
+null_di = -2 * log(saturated_MLE / reduced_model_MLE)
+residual_di = -2 * log(full_model_MLE / reduced_model_MLE)
+cat("null deviance is ", null_di, "\n")
+cat("residual deviance is ", residual_di, "\n")
+
+```
+
+
+2c) 
+```{r}
+library(Rsolnp)
+y = c(11, 14, 24, 22, 29) 
+ll = function(pi) {
+  ll = log(dmultinom(y, prob = c(pi[1], pi[2], pi[3], pi[4], pi[5])))
+  # return the negative to maximize rather than minimize
+  return(-ll)
+}
+eqn = function(pi) {
+  z1 <- pi[1]-pi[2] # For pi1+pi2+pi3 =1
+  z2 <- pi[3] -pi[4] # For pi1=2pi2 or pi1-2pi2 =0
+  return(c(z1, z2))
+}
+constraints = c(0,0)
+lpi = c(0,0,0,0,0)
+upi = c(1,1,1,1,1)
+pi0 = c(1/5, 1/5, 1/5, 1/5, 1/5)
+ctrl = list(trace = 0)
+sol1 = solnp(pi0, fun = ll, eqfun = eqn, eqB = constraints, LB=lpi,
+             UB=upi, control=ctrl)
+cat("MLe estimate is: ", sol1$pars, "\n")
+```
+
+2d) 
+```{r}
+n = sum(y)
+muhat = sol1$pars * n 
+LRT_2d = sum(((y-muhat)^2)/muhat)
+p_value_LRT = 1-pchisq(LRT_2d, df = length(y) - 1)
+cat("p value is: ", p_value_LRT, "\n")
+```
+At alpha = 0.05 level of significance, we fail to reject null hypothesis since 
+p value is greater 
+
+
+```{r}
+gsq_2e = 2 * sum( y * log(y/muhat))
+p_value_gsq = 1-pchisq(gsq_2e, df = length(y) - 1)
+cat("p value is: ", p_value_gsq, "\n")
+```
+At alpha = 0.05 level of significance, we fail to reject null hypothesis since 
+p value is greater 
+ 
+ 
+3a) 
+```{r}
+N = 100
+alpha = 0.05
+pi0 = c(0.15, 0.15, 0.3, 0.4)
+pi = c(0.1, 0.2, 0.3, 0.4)
+crt_value1 = qchisq(1-alpha, df = length(pi0) - 1)
+lambdaP = N * sum(((pi-pi0)^2)/pi0)
+power_P = 1-pchisq(crt_value1, 3, lambdaP)
+cat("power is ", power_P)
+```
+3b)
+```{r}
+lambdaLRT = 2*N*sum(pi*log(pi/pi0))
+power_LRT = 1-pchisq(crt_value1, 3, lambdaLRT)
+cat("power is: ", power_LRT)
+
+```
+3c) 
+```{r}
+N=0
+power = 0.05 
+while(power <0.9){
+  N=N+1
+  lambdaP = N * sum(((pi-pi0)^2)/pi0)
+  power = 1-pchisq(crt_value1, 3, lambdaP)
+}
+cat("at N =", N, ", we get a power of ", power)
+```
+3d) 
+```{r}
+N2=0
+power2 = 0.05 
+while(power2 <0.9){
+  N2=N2+1
+  lambdaLRT = 2*N2*sum(pi*log(pi/pi0))
+  power2 = 1-pchisq(crt_value1, 3, lambdaLRT)
+}
+cat("at N =", N2, ", we get a power of ", power2)
+```
+
+
+4a) 
+```{r}
+
+data2 = data.frame(
+  DoseLevel = c(0, 1, 2, 3, 4, 5),  # Convert to factor
+  DeadMoths = c(1, 4, 9, 13, 18, 20)
+)
+#probability of death for x moths dead is x/20
+model2 = glm(cbind(DeadMoths, 20 - DeadMoths) ~ DoseLevel, data = data2, family = binomial)
+summary(model2)
+```
+logistic regression model written on paper using values 
+
+4b)
+```{r}
+null_model <- glm(cbind(DeadMoths, 20 - DeadMoths) ~ 1, data = data2, family = binomial)
+summary(null_model)
+lrt_test_4b = anova(null_model, model2, test = "Chisq")
+lrt_test_4b
+```
+p value much smaller than even 0.01, so reject null hypothesis, meaning 
+doselevel has significant effect on number of mothsn dead. 
+
+4c) 
+```{r}
+probability_death = model2$coefficients[1] + model2$coefficients[2]*3
+cat("probability od death at dose level 3 is: ", probability_death)
+```
+
+4d) El0.75 is the dose level at which the death level of moths reach 75%, predicted by the full regression model. 
+```{r}
+lethal_dose = (log(0.75/(1-0.75)))-model2$coefficients[1]/model2$coefficients[2]
+cat("at a dose level of ", lethal_dose, "75% of the moths are expected to die")
+```
+
+4e) 
+```{r}
+pearson_residual = resid(model2, type = "pearson")
+hat_values = hatvalues(model2)
+std_pearson_residual = pearson_residual /sqrt(1-hat_values)
+cat("standardized pearson residual values are: ", std_pearson_residual)
+```
+
+4f) 
+```{r}
+pearson_chi_sq = sum(pearson_residual^2)
+p_value = pchisq(pearson_chi_sq, df = length(pearson_residual) -model2$rank, lower.tail = FALSE)
+p_value
+```
+since p value much greater than even 0.8 (normally we use a = 0.05), we fail to 
+reject null hypothesis which means that the full model provides a good fit 
+for the data. 
+
